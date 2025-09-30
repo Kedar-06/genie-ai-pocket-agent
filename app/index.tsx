@@ -1,5 +1,11 @@
 import Colors from "@/shared/Colors";
+import { useAuth, useSSO, useUser } from "@clerk/clerk-expo";
+import * as AuthSession from "expo-auth-session";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Platform,
@@ -8,7 +14,85 @@ import {
   View,
 } from "react-native";
 
+export const useWarmUpBrowser = () => {
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    void WebBrowser.warmUpAsync();
+    return () => {
+      // Cleanup: closes browser when component unmounts
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
+
+// Handle any pending authentication sessions
+WebBrowser.maybeCompleteAuthSession();
+
 export default function Index() {
+  const { isSignedIn } = useAuth();
+  const router = useRouter();
+  const { user } = useUser();
+  const [loading, setLoading] = useState(true);
+  console.log(user?.primaryEmailAddress?.emailAddress);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      // Redirect to Home Screen
+      // router.replace("");
+    }
+    if (isSignedIn !== undefined) {
+      setLoading(false);
+    }
+  }, [isSignedIn]);
+
+  useWarmUpBrowser();
+
+  // Use the `useSSO()` hook to access the `startSSOFlow()` method
+  const { startSSOFlow } = useSSO();
+
+  const onLoginPress = useCallback(async () => {
+    const redirectUrl = AuthSession.makeRedirectUri();
+    console.log("Generated Redirect URL:", redirectUrl);
+
+    try {
+      // Start the authentication process by calling `startSSOFlow()`
+      const { createdSessionId, setActive, signIn, signUp } =
+        await startSSOFlow({
+          strategy: "oauth_google",
+          // For web, defaults to current path
+          // For native, you must pass a scheme, like AuthSession.makeRedirectUri({ scheme, path })
+          // For more info, see https://docs.expo.dev/versions/latest/sdk/auth-session/#authsessionmakeredirecturioptions
+          redirectUrl: AuthSession.makeRedirectUri(),
+        });
+
+      // If sign in was successful, set the active session
+      if (createdSessionId) {
+        setActive!({
+          session: createdSessionId,
+          navigate: async ({ session }) => {
+            if (session?.currentTask) {
+              // Check for tasks and navigate to custom UI to help users resolve them
+              // See https://clerk.com/docs/guides/development/custom-flows/overview#session-tasks
+              console.log(session?.currentTask);
+              return;
+            }
+
+            router.push("/");
+          },
+        });
+      } else {
+        // If there is no `createdSessionId`,
+        // there are missing requirements, such as MFA
+        // Use the `signIn` or `signUp` returned from `startSSOFlow`
+        // to handle next steps
+      }
+    } catch (err) {
+      // See https://clerk.com/docs/guides/development/custom-flows/error-handling
+      // for more info on error handling
+      console.error(JSON.stringify(err, null, 2));
+    }
+  }, []);
+
   return (
     <View
       style={{
@@ -53,36 +137,40 @@ export default function Index() {
           Your Ultimate AI Personal Agent to make life easier. Try it Today, For
           Free!
         </Text>
-        <TouchableOpacity
-          style={{
-            width: "100%",
-            padding: 15,
-            backgroundColor: Colors.PRIMARY,
-            borderRadius: 12,
-            marginTop: 40,
-            // Shadow for iOS
-            shadowColor: "#000",
-            shadowOffset: {
-              width: 0,
-              height: 2,
-            },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            // Elevation for Android
-            elevation: 5,
-          }}
-        >
-          <Text
+        {!loading && (
+          <TouchableOpacity
             style={{
-              color: Colors.WHITE,
-              textAlign: "center",
-              fontSize: 24, // Made the font slightly larger
-              fontWeight: "bold", // Made the text bold
+              width: "100%",
+              padding: 15,
+              backgroundColor: Colors.PRIMARY,
+              borderRadius: 12,
+              marginTop: 40,
+              // Shadow for iOS
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              // Elevation for Android
+              elevation: 5,
             }}
+            onPress={onLoginPress}
           >
-            Get Started
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={{
+                color: Colors.WHITE,
+                textAlign: "center",
+                fontSize: 24, // Made the font slightly larger
+                fontWeight: "bold", // Made the text bold
+              }}
+            >
+              Get Started
+            </Text>
+          </TouchableOpacity>
+        )}
+        {loading === undefined && <ActivityIndicator size={"large"} />}
       </View>
     </View>
   );

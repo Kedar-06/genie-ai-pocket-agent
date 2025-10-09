@@ -42,9 +42,37 @@ To learn more about developing your project with Expo, look at the following res
 - [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
 
-## Join the community
+## Clerk Setup for Google Login
 
-Join our community of developers creating universal apps.
+This project uses **Clerk** for authentication, specifically to enable **Google Login**. To integrate Clerk into your project, follow the steps below:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 1. Create a New Application on Clerk
+
+- Visit [Clerk](https://clerk.com/) and sign up or log in.
+- Create a new application within the Clerk dashboard.
+
+### 2. Install Clerk SDK
+
+- Install the Clerk SDK into your project by running the following command:
+
+```bash
+npm install @clerk/clerk-sdk
+```
+## Firebase Setup
+
+To integrate Firebase with your Expo app, follow these steps:
+
+### 1. Set up Firebase Project
+
+- Go to the [Firebase Console](https://console.firebase.google.com/).
+- Create a new project or select an existing one.
+- Once inside your project, go to the **Project Settings** and navigate to the **General** tab.
+- Add a new **Web App** to get your Firebase config details.
+
+### 2. Install Firebase SDK
+
+Install the necessary Firebase dependencies for your project:
+
+```bash
+npm install firebase
+

@@ -1,8 +1,10 @@
+import { firestoreDb } from "@/config/FirebaseConfig";
 import Colors from "@/shared/Colors";
 import { useAuth, useSSO, useUser } from "@clerk/clerk-expo";
 import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import { doc, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -65,6 +67,15 @@ export default function Index() {
           redirectUrl: AuthSession.makeRedirectUri(),
         });
 
+      if (signUp) {
+        await setDoc(doc(firestoreDb, "users", signUp.emailAddress ?? ""), {
+          email: signUp.emailAddress,
+          name: signUp.firstName + " " + signUp.lastName,
+          joinDate: Date.now(),
+          credits: 20,
+        });
+      }
+
       // If sign in was successful, set the active session
       if (createdSessionId) {
         setActive!({
@@ -122,7 +133,7 @@ export default function Index() {
             textShadowRadius: 3,
           }}
         >
-          Welcome to AI Pocket Agent
+          Welcome to Genie AI Pocket Agent
         </Text>
         <Text
           style={{

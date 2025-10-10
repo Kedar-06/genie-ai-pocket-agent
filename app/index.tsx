@@ -5,7 +5,8 @@ import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { doc, setDoc } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+
 import {
   ActivityIndicator,
   Dimensions,
@@ -40,7 +41,7 @@ export default function Index() {
   useEffect(() => {
     if (isSignedIn) {
       // Redirect to Home Screen
-      // router.replace("");
+      router.replace("/(tabs)/Home");
     }
     if (isSignedIn !== undefined) {
       setLoading(false);

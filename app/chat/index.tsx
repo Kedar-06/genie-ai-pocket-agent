@@ -1,32 +1,35 @@
 import Colors from "@/shared/Colors";
+import { AIChatModel } from "@/shared/GlobalApi";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { Camera, Plus, Send } from "lucide-react-native";
+import { Camera, Copy, Plus, Send } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from "react-native";
 
-const initialMessages = [
-  { role: "user", text: "Hi How are you?" },
-  { role: "assistant", text: "I am good" },
-  { role: "user", text: "Can you help me?" },
-  { role: "assistant", text: "Yeah sure" },
-  { role: "user", text: "Thank you" },
-  { role: "assistant", text: "Welcome" },
-];
+type Message = {
+  role: string;
+  content: string;
+};
 
 export default function ChatUI() {
   const navigation = useNavigation();
   const { agentName, agentPrompt, agentId, initialText } =
     useLocalSearchParams();
-  const [messages, Setmessages] = useState(initialMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>();
+
   useEffect(() => {
     navigation.setOptions({
       headerShown: true,
@@ -34,6 +37,60 @@ export default function ChatUI() {
       headerRight: () => <Plus />,
     });
   }, []);
+
+  useEffect(() => {
+    if (agentPrompt) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "system", content: agentPrompt.toString() },
+      ]);
+    }
+  }, [agentPrompt]);
+
+  const onSendMessage = async () => {
+    if (!input?.trim()) return;
+
+    const newMessage = { role: "user", content: input };
+    const updatedMessages = [...messages, newMessage];
+
+    setMessages(updatedMessages);
+    setInput("");
+
+    const loadingMsg = { role: "assistant", content: "⏳ Loading..." };
+    setMessages((prev) => [...prev, loadingMsg]);
+    const result = await AIChatModel(updatedMessages);
+    console.log(result);
+
+    setMessages((prev) => {
+      const updated = [...prev];
+      updated[updated.length - 1] = result.aiResponse;
+      return updated;
+    });
+
+    // If the API returns a plain string:
+    if (typeof result.aiResponse === "string") {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: result.aiResponse },
+      ]);
+    }
+    // If it returns an object (future-proof)
+    else if (result.aiResponse?.content) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: result.aiResponse.role || "assistant",
+          content: result.aiResponse.content,
+        },
+      ]);
+    }
+  };
+
+  const CopyToClipboard = async (message: string) => {
+    await Clipboard.setStringAsync(message);
+    ToastAndroid.show("Copied to Clipboard!", ToastAndroid.BOTTOM);
+  };
+
   return (
     <KeyboardAvoidingView
       keyboardVerticalOffset={60}
@@ -42,38 +99,61 @@ export default function ChatUI() {
     >
       <FlatList
         data={messages}
-        renderItem={({ item, index }) => (
-          <View
-            style={[
-              styles.messageContainer,
-              item.role === "user"
-                ? styles.userMessage
-                : styles.assistantMessage,
-            ]}
-          >
-            <Text
+        // @ts-ignore
+        renderItem={({ item, index }) =>
+          item.role !== "system" && (
+            <View
               style={[
-                styles.messageText,
-                item.role === "user" ? styles.userText : styles.assistantText,
+                styles.messageContainer,
+                item.role === "user"
+                  ? styles.userMessage
+                  : styles.assistantMessage,
               ]}
             >
-              {item.text}
-            </Text>
-          </View>
-        )}
+              {item.content === "⏳ Loading..." ? (
+                <ActivityIndicator size={"small"} color={Colors.BLACK} />
+              ) : (
+                <Text
+                  style={[
+                    styles.messageText,
+                    item.role === "user"
+                      ? styles.userText
+                      : styles.assistantText,
+                  ]}
+                >
+                  {item.content}
+                </Text>
+              )}
+              {item.role === "assistant" && (
+                <Pressable
+                  onPress={() => CopyToClipboard(item.content)}
+                  className="mt-3"
+                >
+                  <Copy color={Colors.GRAY} />
+                </Pressable>
+              )}
+            </View>
+          )
+        }
       />
       {/* Input Box */}
       <View style={styles.inputContainer}>
         <TouchableOpacity style={{ marginRight: 6 }}>
           <Camera size={27} />
         </TouchableOpacity>
-        <TextInput style={styles.input} placeholder="Type a message......" />
+        <TextInput
+          style={styles.input}
+          placeholder="Type a message......"
+          onChangeText={(v) => setInput(v)}
+          value={input}
+        />
         <TouchableOpacity
           style={{
             backgroundColor: Colors.PRIMARY,
             padding: 7,
             borderRadius: 99,
           }}
+          onPress={onSendMessage}
         >
           <Send color={Colors.WHITE} size={20} />
         </TouchableOpacity>

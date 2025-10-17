@@ -1,12 +1,16 @@
+import { storage } from "@/config/FirebaseConfig";
 import Colors from "@/shared/Colors";
 import { AIChatModel } from "@/shared/GlobalApi";
 import * as Clipboard from "expo-clipboard";
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { Camera, Copy, Plus, Send } from "lucide-react-native";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { Camera, Copy, Plus, Send, X } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -20,7 +24,7 @@ import {
 
 type Message = {
   role: string;
-  content: string;
+  content: string | any[];
 };
 
 export default function ChatUI() {
@@ -29,6 +33,7 @@ export default function ChatUI() {
     useLocalSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>();
+  const [file, setFile] = useState<string | null>();
 
   useEffect(() => {
     navigation.setOptions({
@@ -50,16 +55,33 @@ export default function ChatUI() {
   const onSendMessage = async () => {
     if (!input?.trim()) return;
 
-    const newMessage = { role: "user", content: input };
+    let newMessage: Message;
+    if (file) {
+      // Upload Image to Storage
+      const imageUrl = UploadImageToStorage();
+      console.log(imageUrl);
+      newMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: input },
+          { type: "image_url", image_url: { url: imageUrl } },
+        ],
+      };
+      setInput("");
+      setFile(null);
+    } else {
+      newMessage = { role: "user", content: input };
+      setInput("");
+    }
+
     const updatedMessages = [...messages, newMessage];
 
     setMessages(updatedMessages);
-    setInput("");
 
     const loadingMsg = { role: "assistant", content: "⏳ Loading..." };
     setMessages((prev) => [...prev, loadingMsg]);
     const result = await AIChatModel(updatedMessages);
-    console.log(result);
+    console.log(result.aiResponse);
 
     setMessages((prev) => {
       const updated = [...prev];
@@ -91,6 +113,33 @@ export default function ChatUI() {
     ToastAndroid.show("Copied to Clipboard!", ToastAndroid.BOTTOM);
   };
 
+  const PickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      setFile(result.assets[0].uri);
+    }
+  };
+
+  const UploadImageToStorage = async () => {
+    // @ts-ignore
+    const response = await fetch(file);
+    const blobFile = await response.blob();
+
+    const imageRef = ref(storage, "ai-pocket-agent" + Date.now() + ".png");
+    // @ts-ignore
+    uploadBytes(imageRef, blobFile).then((snapshot) => {
+      console.log("File Uploaded!");
+    });
+
+    const imageUrl = getDownloadURL(imageRef);
+    console.log(imageUrl);
+    return imageUrl;
+  };
   return (
     <KeyboardAvoidingView
       keyboardVerticalOffset={60}
@@ -110,23 +159,55 @@ export default function ChatUI() {
                   : styles.assistantMessage,
               ]}
             >
-              {item.content === "⏳ Loading..." ? (
-                <ActivityIndicator size={"small"} color={Colors.BLACK} />
+              {typeof item.content === "string" ? (
+                item.content === "⏳ Loading..." ? (
+                  <ActivityIndicator size={"small"} color={Colors.BLACK} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.messageText,
+                      item.role === "user"
+                        ? styles.userText
+                        : styles.assistantText,
+                    ]}
+                  >
+                    {item.content}
+                  </Text>
+                )
               ) : (
-                <Text
-                  style={[
-                    styles.messageText,
-                    item.role === "user"
-                      ? styles.userText
-                      : styles.assistantText,
-                  ]}
-                >
-                  {item.content}
-                </Text>
+                <>
+                  {item.content.find((c: any) => c.type === "text") && (
+                    <Text
+                      style={[
+                        styles.messageText,
+                        item.role === "user"
+                          ? styles.userText
+                          : styles.assistantText,
+                      ]}
+                    >
+                      {item.content.find((c) => c.type === "text").text}
+                    </Text>
+                  )}
+
+                  {item.content.find((c: any) => c.type === "image_url") && (
+                    <Image
+                      source={{
+                        uri: item.content.find((c) => c.type === "image_url")
+                          .image_url?.url,
+                      }}
+                      style={{
+                        width: 180,
+                        height: 180,
+                        borderRadius: 8,
+                        marginTop: 6,
+                      }}
+                    />
+                  )}
+                </>
               )}
               {item.role === "assistant" && (
                 <Pressable
-                  onPress={() => CopyToClipboard(item.content)}
+                  onPress={() => CopyToClipboard(item.content.toString())}
                   className="mt-3"
                 >
                   <Copy color={Colors.GRAY} />
@@ -136,27 +217,47 @@ export default function ChatUI() {
           )
         }
       />
-      {/* Input Box */}
-      <View style={styles.inputContainer}>
-        <TouchableOpacity style={{ marginRight: 6 }}>
-          <Camera size={27} />
-        </TouchableOpacity>
-        <TextInput
-          style={styles.input}
-          placeholder="Type a message......"
-          onChangeText={(v) => setInput(v)}
-          value={input}
-        />
-        <TouchableOpacity
-          style={{
-            backgroundColor: Colors.PRIMARY,
-            padding: 7,
-            borderRadius: 99,
-          }}
-          onPress={onSendMessage}
-        >
-          <Send color={Colors.WHITE} size={20} />
-        </TouchableOpacity>
+      <View>
+        {file && (
+          <View
+            style={{ marginBottom: 6, display: "flex", flexDirection: "row" }}
+          >
+            <Image
+              source={{ uri: file }}
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 6,
+                marginBottom: 6,
+              }}
+            />
+            <TouchableOpacity onPress={() => setFile(null)}>
+              <X />
+            </TouchableOpacity>
+          </View>
+        )}
+        {/* Input Box */}
+        <View style={styles.inputContainer}>
+          <TouchableOpacity style={{ marginRight: 9 }} onPress={PickImage}>
+            <Camera size={27} />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.input}
+            placeholder="Type a message......"
+            onChangeText={(v) => setInput(v)}
+            value={input}
+          />
+          <TouchableOpacity
+            style={{
+              backgroundColor: Colors.PRIMARY,
+              padding: 7,
+              borderRadius: 99,
+            }}
+            onPress={onSendMessage}
+          >
+            <Send color={Colors.WHITE} size={20} />
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );

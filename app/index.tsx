@@ -36,7 +36,7 @@ export default function Index() {
   const router = useRouter();
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
-  // console.log(user?.primaryEmailAddress?.emailAddress);
+  console.log(user?.primaryEmailAddress?.emailAddress);
 
   useEffect(() => {
     if (isSignedIn) {
@@ -55,7 +55,7 @@ export default function Index() {
 
   const onLoginPress = useCallback(async () => {
     const redirectUrl = AuthSession.makeRedirectUri();
-    // console.log("Generated Redirect URL:", redirectUrl);
+    console.log("Generated Redirect URL:", redirectUrl);
 
     try {
       // Start the authentication process by calling `startSSOFlow()`

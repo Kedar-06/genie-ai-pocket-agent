@@ -173,7 +173,7 @@ export default function ChatUI() {
   useEffect(() => {
     if (!docId || !user || messages.length === 0) return;
 
-    const saveMessages = async () => {
+    const SaveMessages = async () => {
       try {
         const cleanMessages = messages.map((m) => ({
           role: m.role,
@@ -208,7 +208,7 @@ export default function ChatUI() {
       }
     };
 
-    saveMessages();
+    SaveMessages();
   }, [messages]);
 
   // ✅ Copy to clipboard

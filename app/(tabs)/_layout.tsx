@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import React from "react";
+import * as React from "react";
 import { Globe, History, HomeIcon, UserCircle } from "lucide-react-native";
 export default function TabLayout() {
   return (

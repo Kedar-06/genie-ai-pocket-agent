@@ -1,12 +1,15 @@
-import { storage } from "@/config/FirebaseConfig";
+import { firestoreDb, storage } from "@/config/FirebaseConfig";
 import Colors from "@/shared/Colors";
 import { AIChatModel } from "@/shared/GlobalApi";
+import { useUser } from "@clerk/clerk-expo";
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useNavigation } from "expo-router";
+import { doc, setDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Camera, Copy, Plus, Send, X } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -29,20 +32,32 @@ type Message = {
 
 export default function ChatUI() {
   const navigation = useNavigation();
-  const { agentName, agentPrompt, agentId, initialText } =
-    useLocalSearchParams();
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState<string>();
-  const [file, setFile] = useState<string | null>();
+  const { agentName, agentPrompt, agentId, chatId } = useLocalSearchParams();
+  const { user } = useUser();
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState<string>("");
+  const [file, setFile] = useState<string | null>(null);
+  const [docId, setDocId] = useState<string>(() =>
+    chatId ? chatId.toString() : Date.now().toString()
+  );
+
+  // ✅ Set navigation & docId
   useEffect(() => {
     navigation.setOptions({
       headerShown: true,
       headerTitle: agentName,
       headerRight: () => <Plus />,
     });
-  }, []);
 
+    if (!docId) {
+      const newDocId = Date.now().toString();
+      setDocId(newDocId);
+      console.log("🆕 New chat created with docId:", newDocId);
+    }
+  }, [docId]);
+
+  // ✅ Add system prompt
   useEffect(() => {
     if (agentPrompt) {
       setMessages((prev) => [
@@ -52,67 +67,7 @@ export default function ChatUI() {
     }
   }, [agentPrompt]);
 
-  const onSendMessage = async () => {
-    if (!input?.trim()) return;
-
-    let newMessage: Message;
-    if (file) {
-      // Upload Image to Storage
-      const imageUrl = UploadImageToStorage();
-      console.log(imageUrl);
-      newMessage = {
-        role: "user",
-        content: [
-          { type: "text", text: input },
-          { type: "image_url", image_url: { url: imageUrl } },
-        ],
-      };
-      setInput("");
-      setFile(null);
-    } else {
-      newMessage = { role: "user", content: input };
-      setInput("");
-    }
-
-    const updatedMessages = [...messages, newMessage];
-
-    setMessages(updatedMessages);
-
-    const loadingMsg = { role: "assistant", content: "⏳ Loading..." };
-    setMessages((prev) => [...prev, loadingMsg]);
-    const result = await AIChatModel(updatedMessages);
-    console.log(result.aiResponse);
-
-    setMessages((prev) => {
-      const updated = [...prev];
-      updated[updated.length - 1] = result.aiResponse;
-      return updated;
-    });
-
-    // If the API returns a plain string:
-    if (typeof result.aiResponse === "string") {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: result.aiResponse },
-      ]);
-    }
-    // If it returns an object (future-proof)
-    else if (result.aiResponse?.content) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: result.aiResponse.role || "assistant",
-          content: result.aiResponse.content,
-        },
-      ]);
-    }
-  };
-
-  const CopyToClipboard = async (message: string) => {
-    await Clipboard.setStringAsync(message);
-    ToastAndroid.show("Copied to Clipboard!", ToastAndroid.BOTTOM);
-  };
-
+  // ✅ Pick image
   const PickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
@@ -125,21 +80,143 @@ export default function ChatUI() {
     }
   };
 
+  // ✅ Upload image to Firebase Storage
   const UploadImageToStorage = async () => {
-    // @ts-ignore
-    const response = await fetch(file);
-    const blobFile = await response.blob();
+    if (!file) return null;
+    try {
+      const response = await fetch(file);
+      const blobFile = await response.blob();
 
-    const imageRef = ref(storage, "ai-pocket-agent" + Date.now() + ".png");
-    // @ts-ignore
-    uploadBytes(imageRef, blobFile).then((snapshot) => {
-      console.log("File Uploaded!");
-    });
+      const imageRef = ref(storage, "ai-pocket-agent/" + Date.now() + ".png");
+      await uploadBytes(imageRef, blobFile);
+      const imageUrl = await getDownloadURL(imageRef);
 
-    const imageUrl = getDownloadURL(imageRef);
-    console.log(imageUrl);
-    return imageUrl;
+      console.log("✅ Image uploaded:", imageUrl);
+      return imageUrl;
+    } catch (error) {
+      console.error("❌ Image upload failed:", error);
+      return null;
+    }
   };
+
+  // ✅ Send message handler
+  const onSendMessage = async () => {
+    if (!input?.trim()) return;
+    if (!docId) {
+      ToastAndroid.show("Please wait... setting up chat!", ToastAndroid.SHORT);
+      return;
+    }
+
+    let newMessage;
+
+    if (file) {
+      const imageUrl = await UploadImageToStorage();
+      newMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: input },
+          ...(imageUrl
+            ? [{ type: "image_url", image_url: { url: imageUrl } }]
+            : []),
+        ],
+      };
+      setFile(null);
+    } else {
+      newMessage = { role: "user", content: input };
+    }
+
+    setInput("");
+
+    const updatedMessages = [
+      ...messages,
+      newMessage,
+      { role: "assistant", content: "⏳ Loading..." },
+    ];
+    setMessages(updatedMessages);
+
+    try {
+      const result = await AIChatModel(updatedMessages);
+      console.log("AI Response:", result);
+
+      let finalResponse;
+      if (typeof result === "string") {
+        finalResponse = { role: "assistant", content: result };
+      } else if (typeof result.aiResponse === "string") {
+        finalResponse = { role: "assistant", content: result.aiResponse };
+      } else if (result?.aiResponse?.content) {
+        finalResponse = {
+          role: result.aiResponse.role || "assistant",
+          content: result.aiResponse.content,
+        };
+      } else {
+        finalResponse = {
+          role: "assistant",
+          content: "⚠️ No response from AI",
+        };
+      }
+
+      setMessages((prev) => {
+        const copy = [...prev];
+        copy[copy.length - 1] = finalResponse;
+        return copy;
+      });
+    } catch (error) {
+      console.error("Error in AIChatModel:", error);
+      setMessages((prev) => [
+        ...prev.slice(0, -1),
+        { role: "assistant", content: "❌ Internal Server Error" },
+      ]);
+    }
+  };
+
+  // ✅ Save chats to Firestore
+  useEffect(() => {
+    if (!docId || !user || messages.length === 0) return;
+
+    const saveMessages = async () => {
+      try {
+        const cleanMessages = messages.map((m) => ({
+          role: m.role,
+          content:
+            typeof m.content === "string"
+              ? m.content
+              : JSON.stringify(m.content),
+        }));
+
+        console.log("🔥 Saving messages:", {
+          count: cleanMessages.length,
+          docId,
+          sample: cleanMessages[cleanMessages.length - 1],
+        });
+
+        await setDoc(
+          doc(firestoreDb, "chats", docId),
+          {
+            userEmail: user?.primaryEmailAddress?.emailAddress || "guest",
+            messages: cleanMessages,
+            agentId,
+            agentName,
+            agentPrompt,
+            updatedAt: Date.now(),
+          },
+          { merge: true }
+        );
+
+        console.log("✅ Chat saved successfully in Firestore!");
+      } catch (error) {
+        console.error("❌ Firestore write failed:", error);
+      }
+    };
+
+    saveMessages();
+  }, [messages]);
+
+  // ✅ Copy to clipboard
+  const CopyToClipboard = async (message: string) => {
+    await Clipboard.setStringAsync(message);
+    ToastAndroid.show("Copied to Clipboard!", ToastAndroid.BOTTOM);
+  };
+
   return (
     <KeyboardAvoidingView
       keyboardVerticalOffset={60}
@@ -148,9 +225,11 @@ export default function ChatUI() {
     >
       <FlatList
         data={messages}
-        // @ts-ignore
-        renderItem={({ item, index }) =>
-          item.role !== "system" && (
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={({ item }) => {
+          if (item.role === "system") return null;
+
+          return (
             <View
               style={[
                 styles.messageContainer,
@@ -161,7 +240,7 @@ export default function ChatUI() {
             >
               {typeof item.content === "string" ? (
                 item.content === "⏳ Loading..." ? (
-                  <ActivityIndicator size={"small"} color={Colors.BLACK} />
+                  <ActivityIndicator size="small" color={Colors.BLACK} />
                 ) : (
                   <Text
                     style={[
@@ -176,33 +255,35 @@ export default function ChatUI() {
                 )
               ) : (
                 <>
-                  {item.content.find((c: any) => c.type === "text") && (
-                    <Text
-                      style={[
-                        styles.messageText,
-                        item.role === "user"
-                          ? styles.userText
-                          : styles.assistantText,
-                      ]}
-                    >
-                      {item.content.find((c) => c.type === "text").text}
-                    </Text>
-                  )}
+                  {Array.isArray(item.content) &&
+                    item.content.find((c: any) => c.type === "text") && (
+                      <Text
+                        style={[
+                          styles.messageText,
+                          item.role === "user"
+                            ? styles.userText
+                            : styles.assistantText,
+                        ]}
+                      >
+                        {item.content.find((c) => c.type === "text").text}
+                      </Text>
+                    )}
 
-                  {item.content.find((c: any) => c.type === "image_url") && (
-                    <Image
-                      source={{
-                        uri: item.content.find((c) => c.type === "image_url")
-                          .image_url?.url,
-                      }}
-                      style={{
-                        width: 180,
-                        height: 180,
-                        borderRadius: 8,
-                        marginTop: 6,
-                      }}
-                    />
-                  )}
+                  {Array.isArray(item.content) &&
+                    item.content.find((c: any) => c.type === "image_url") && (
+                      <Image
+                        source={{
+                          uri: item.content.find((c) => c.type === "image_url")
+                            ?.image_url?.url,
+                        }}
+                        style={{
+                          width: 180,
+                          height: 180,
+                          borderRadius: 8,
+                          marginTop: 6,
+                        }}
+                      />
+                    )}
                 </>
               )}
               {item.role === "assistant" && (
@@ -214,9 +295,10 @@ export default function ChatUI() {
                 </Pressable>
               )}
             </View>
-          )
-        }
+          );
+        }}
       />
+
       <View>
         {file && (
           <View

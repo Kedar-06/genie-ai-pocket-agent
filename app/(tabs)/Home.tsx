@@ -1,7 +1,8 @@
 import Colors from "@/shared/Colors";
 import { useNavigation } from "expo-router";
 import { Settings } from "lucide-react-native";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
+import * as React from "react";
 import { FlatList, Image, Text, TouchableOpacity, View } from "react-native";
 import AgentListComponent from "../../components/Home/AgentListComponent";
 import CreateAgentBanner from "../../components/Home/CreateAgentBanner";

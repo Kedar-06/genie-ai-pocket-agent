@@ -32,30 +32,75 @@ type Message = {
 
 export default function ChatUI() {
   const navigation = useNavigation();
-  const { agentName, agentPrompt, agentId, chatId } = useLocalSearchParams();
+  const { agentName, agentPrompt, agentId, chatId, messagesList } =
+    useLocalSearchParams();
   const { user } = useUser();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
   const [file, setFile] = useState<string | null>(null);
-  const [docId, setDocId] = useState<string>(() =>
-    chatId ? chatId.toString() : Date.now().toString()
-  );
+  // const [docId, setDocId] = useState<string>(() =>
+  //   chatId ? chatId.toString() : Date.now().toString()
+  // );
+  const [docId, setDocId] = useState<string | null>(null);
 
   // ✅ Set navigation & docId
-  useEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      headerTitle: agentName,
-      headerRight: () => <Plus />,
-    });
+  // useEffect(() => {
+  //   navigation.setOptions({
+  //     headerShown: true,
+  //     headerTitle: agentName,
+  //     headerRight: () => <Plus />,
+  //   });
 
-    if (!docId) {
-      const newDocId = Date.now().toString();
-      setDocId(newDocId);
-      console.log("🆕 New chat created with docId:", newDocId);
+  //   // if (!chatId) {
+  //   //   const id = Date.now().toString();
+  //   //   setDocId(id);
+  //   // }
+
+  //   if (!docId) {
+  //     const newDocId = Date.now().toString();
+  //     setDocId(newDocId);
+  //     console.log("🆕 New chat created with docId:", newDocId);
+  //   }
+
+  //   // @ts-ignore
+  //   const messageListJSON = JSON.parse(messagesList);
+  //   if (messageListJSON?.length > 0) {
+  //     setMessages(messageListJSON);
+  //   }
+  // }, [docId]);
+
+  useEffect(() => {
+  navigation.setOptions({
+    headerShown: true,
+    headerTitle: agentName,
+    headerRight: () => <Plus />,
+  });
+
+  // ✅ Use existing chatId if opening from history
+  if (chatId && chatId !== "undefined") {
+    setDocId(chatId.toString());
+  } else {
+    // ✅ New chat
+    const newId = Date.now().toString();
+    setDocId(newId);
+  }
+
+  // ✅ Parse old messages safely
+  try {
+    let parsed =
+      typeof messagesList === "string"
+        ? JSON.parse(messagesList)
+        : messagesList;
+
+    if (Array.isArray(parsed)) {
+      setMessages(parsed);
     }
-  }, [docId]);
+  } catch (err) {
+    console.log("❌ Failed parsing messagesList", err);
+  }
+}, []);
+
 
   // ✅ Add system prompt
   useEffect(() => {
@@ -171,7 +216,8 @@ export default function ChatUI() {
 
   // ✅ Save chats to Firestore
   useEffect(() => {
-    if (!docId || !user || messages.length === 0) return;
+    if (!docId || docId === "undefined" || !user) return;
+    if (messages.length === 0) return;
 
     const SaveMessages = async () => {
       try {

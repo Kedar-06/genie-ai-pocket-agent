@@ -1,5 +1,5 @@
 import Colors from "@/shared/Colors";
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { Settings } from "lucide-react-native";
 import { useEffect } from "react";
 import * as React from "react";
@@ -9,7 +9,7 @@ import CreateAgentBanner from "../../components/Home/CreateAgentBanner";
 
 export default function Home() {
   const navigation = useNavigation();
-
+  const router = useRouter();
   useEffect(() => {
     navigation.setOptions({
       headerTitle: () => (
@@ -39,7 +39,12 @@ export default function Home() {
         </TouchableOpacity>
       ),
 
-      headerRight: () => <Settings style={{ marginRight: 15 }} />,
+      headerRight: () => (
+        <Settings
+          style={{ marginRight: 15 }}
+          onPress={() => router.push("/(tabs)/Profile")}
+        />
+      ),
     });
   }, []);
   return (

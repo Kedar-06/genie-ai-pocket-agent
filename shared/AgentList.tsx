@@ -2,148 +2,129 @@ export const Agents = [
   {
     id: 1,
     name: "Writing Assistant",
-    desc: "Write, rewrite and fix texts quickly.",
+    desc: "Write, rewrite, and fix texts quickly.",
     image: require("../assets/images/agent_1.png"),
     initialText:
       "Write an email requesting leave from my manager for two days.",
     prompt:
-      "You are a writing assistant. Help users write, rewrite, and fix various texts such as emails, reports, and essays.",
+      "You are a writing assistant. Help users write, rewrite, summarize, or improve any text.",
     type: "chat",
     featured: true,
   },
-
   {
     id: 2,
     name: "Image Generator",
     desc: "Create images from text prompts.",
     image: require("../assets/images/agent_2.png"),
-    initialText: "Create a futuristic cityscape with flying cars at sunset.",
-    prompt:
-      "You are an image generator. Convert user-provided descriptions into high-quality images. Handle various themes from nature, fantasy, and urban landscapes.",
+    initialText: "A futuristic city skyline at sunset in cyberpunk style.",
+    prompt: "You are an AI image generator. Convert text into creative images.",
     type: "image",
     featured: true,
   },
-
   {
     id: 3,
-    name: "Fitness Coach",
-    desc: "Provide fitness advice, workout plans, and nutritional guidance.",
+    name: "Translations",
+    desc: "Translate text accurately between languages.",
     image: require("../assets/images/agent_3.png"),
-    initialText: "Create a workout plan for building strength.",
+    initialText: 'Translate "Good morning, how are you?" into French.',
     prompt:
-      "You are a fitness coach. Help users create personalized workout routines, offer fitness tips, and provide guidance on nutrition and health.",
-    type: "chat",
+      "You are a translation expert. Translate text while keeping meaning intact.",
+    type: "translation",
     featured: true,
   },
-
   {
     id: 4,
     name: "Productivity Coach",
-    desc: "Help users stay organized and improve productivity.",
+    desc: "Plan tasks and improve focus.",
     image: require("../assets/images/agent_4.png"),
-    initialText: "Help me plan my tasks for the week to stay productive.",
+    initialText: "Create a daily to-do list for working on a project deadline.",
     prompt:
-      "You are a productivity coach. Assist users with task management, prioritization, and motivation to stay productive and efficient.",
+      "You are a productivity assistant. Help users plan tasks and manage time efficiently.",
     type: "chat",
     featured: true,
   },
-
   {
     id: 5,
-    name: "Maths Solver",
-    desc: "Solve mathematical problems and explain solutions.",
-    image: require("../assets/images/agent_1.png"),
-    initialText: "Solve the equation: 2x + 3 = 11.",
+    name: "Math Solver",
+    desc: "Solve and explain math problems.",
+    image: require("./../assets/images/math.png"),
+    initialText: "Solve: 2x + 5 = 15.",
     prompt:
-      "You are a math solver. Help users with math problems, explain steps, and provide solutions for various topics ranging from basic arithmetic to advanced calculus.",
-    type: "chat",
+      "You are a math assistant. Solve problems and explain step by step.",
+    type: "image+text",
     featured: false,
   },
-
   {
     id: 6,
     name: "Caption Generator",
-    desc: "Generate creative captions for social media posts.",
-    image: require("../assets/images/agent_2.png"),
-    initialText:
-      "Generate a fun and engaging caption for a beach vacation photo.",
+    desc: "Create captions for social media.",
+    image: require("./../assets/images/caption.png"),
+    initialText: "A picture of a puppy playing in the park.",
     prompt:
-      "You are a caption generator. Help users create catchy, creative, and context-appropriate captions for photos, social media posts, and videos.",
-    type: "chat",
+      "You are a caption generator. Create short, catchy captions with hashtags.",
+    type: "image+text",
     featured: false,
   },
-
   {
     id: 7,
     name: "Grammar Fixer",
-    desc: "Fix grammar, spelling, and sentence structure.",
-    image: require("../assets/images/agent_3.png"),
-    initialText:
-      "Correct the grammar in the sentence: 'She don't like the movie.'",
+    desc: "Fix grammar and spelling errors.",
+    image: require("./../assets/images/grammer.png"),
+    initialText: "I going to office yesterday.",
     prompt:
-      "You are a grammar fixer. Help users correct grammatical errors, improve sentence structure, and enhance writing fluency.",
+      "You are a grammar assistant. Correct grammar and spelling without changing meaning.",
     type: "chat",
     featured: false,
   },
-
   {
     id: 8,
-    name: "Translator Assistant",
-    desc: "Translate text between multiple languages.",
-    image: require("../assets/images/agent_4.png"),
-    initialText: "Translate 'Hello, how are you?' into Spanish.",
-    prompt:
-      "You are a translator. Help users translate text between different languages with accuracy and fluency. Handle common and advanced translation tasks.",
+    name: "Fitness Coach",
+    desc: "Get workouts and diet tips.",
+    image: require("./../assets/images/fitness.png"),
+    initialText: "Create a 4-day workout plan for weight loss.",
+    prompt: "You are a fitness assistant. Suggest workouts and meal plans.",
     type: "chat",
     featured: false,
   },
-
   {
     id: 9,
     name: "Code Assistant",
-    desc: "Assist with code-related questions, debug, and provide solutions.",
-    image: require("../assets/images/agent_1.png"),
-    initialText:
-      "Can you help me fix this Python code? It keeps throwing an error on line 42.",
-    prompt:
-      "You are a code assistant. Help users with debugging, writing code snippets, and understanding programming concepts. Support multiple languages like Python, JavaScript, and more.",
+    desc: "Write and debug code.",
+    image: require("./../assets/images/code.png"),
+    initialText: "Write a Python function to check if a number is prime.",
+    prompt: "You are a coding assistant. Generate and explain code.",
     type: "chat",
     featured: false,
   },
-
   {
     id: 10,
     name: "Research Assistant",
-    desc: "Assist with gathering information and conducting research.",
-    image: require("../assets/images/agent_2.png"),
-    initialText: "Can you find recent research on AI ethics and summarize it?",
-    prompt:
-      "You are a research assistant. Help users gather information on various topics, summarize research papers, and provide relevant references for academic or personal projects.",
+    desc: "Summarize and organize information.",
+    image: require("./../assets/images/research.png"),
+    initialText: "Summarize key points from an article about climate change.",
+    prompt: "You are a research assistant. Summarize and simplify information.",
     type: "chat",
     featured: false,
   },
-
   {
     id: 11,
     name: "Storyteller",
-    desc: "Create stories, plot ideas, and narrative-driven content.",
-    image: require("../assets/images/agent_3.png"),
-    initialText:
-      "Can you write a short story about a dragon and a lost treasure?",
+    desc: "Create stories or poems.",
+    image: require("./../assets/images/storyteller.png"),
+    initialText: "Tell a short bedtime story about a dragon and a princess.",
     prompt:
-      "You are a storyteller. Help users create and develop stories, generate plot ideas, and craft engaging narratives across different genres, from fantasy to mystery.",
+      "You are a storyteller. Write imaginative stories for kids and adults.",
     type: "chat",
     featured: false,
   },
-
   {
     id: 12,
-    name: "Prompt Generator",
-    desc: "Generate creative prompts for writing, art, and other creative projects.",
-    image: require("../assets/images/agent_4.png"),
-    initialText: "Can you give me a writing prompt for a sci-fi story?",
-    prompt:
-      "You are a prompt generator. Help users brainstorm creative prompts for writing, art, programming, or other creative activities. Tailor prompts to different genres, themes, and moods.",
+    name: "Email Generator",
+    desc: "Draft professional emails.",
+    image: require("./../assets/images/email.png"),
+    initialText:
+      "Write a professional email to a client about project updates.",
+    prompt: "You are an email assistant. Write clear, concise emails.",
     type: "chat",
     featured: false,
   },

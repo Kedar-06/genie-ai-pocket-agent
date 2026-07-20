@@ -590,5 +590,3 @@ Any new place that can open a chat should copy this param shape exactly — ther
 - **BaaS (Backend-as-a-Service)** — the umbrella term used throughout this document for Clerk, Firebase, and Kravix Studio: third-party platforms providing backend capabilities (auth, database/storage, AI inference respectively) that this app consumes directly from the client, with no backend code of its own mediating any of them.
 
 ---
-
-**Kedar, the `DEVELOPER.md` document is now completed.**
